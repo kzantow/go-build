@@ -36,7 +36,7 @@ func InGitClone(repo, branch string, fn func()) {
 }
 
 var Log = func(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, format+NewLine, args...)
+	_, _ = fmt.Fprintf(os.Stderr, Tpl(format)+NewLine, args...)
 }
 
 func LogErr(err error) {

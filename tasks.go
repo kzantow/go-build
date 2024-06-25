@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/kzantow/go-build/color"
 )
 
 type Task struct {
@@ -14,6 +16,7 @@ type Task struct {
 }
 
 func Tasks(tasks ...Task) {
+	defer appendStackOnPanic()
 	t := taskRunner{}
 	for i := range tasks {
 		t.tasks = append(t.tasks, &tasks[i])
@@ -50,12 +53,16 @@ func (t *taskRunner) Help() {
 var startWd = Cwd()
 
 func (t *taskRunner) Makefile() {
-	buildCmdDir := strings.TrimLeft(strings.TrimPrefix(startWd, RepoRoot()), `\/`)
+	buildCmdDir := strings.TrimLeft(strings.TrimPrefix(string(startWd), string(RepoRoot())), `\/`)
 	for _, t := range t.tasks {
 		fmt.Printf(".PHONY: %s\n", t.Name)
 		fmt.Printf("%s:\n", t.Name)
 		fmt.Printf("\t@go run -C %s . %s\n", buildCmdDir, t.Name)
 	}
+	// catch-all, could be the entire script except
+	fmt.Printf(".PHONY: *\n")
+	fmt.Printf(".DEFAULT:\n")
+	fmt.Printf("\t@go run -C %s . $@\n", buildCmdDir)
 }
 
 func (t *taskRunner) Run(args ...string) {
@@ -85,7 +92,7 @@ func (t *taskRunner) find(name string) *Task {
 func (t *taskRunner) runTask(name string) {
 	tsk := t.find(name)
 	if tsk == nil {
-		panic(fmt.Errorf("no task named %s", name))
+		panic(fmt.Errorf("no task named: %s", color.Bold(color.Underline(name))))
 	}
 	if _, ok := t.run[name]; ok {
 		return
@@ -101,6 +108,11 @@ func (t *taskRunner) runTask(name string) {
 		}
 		t.runTask(dep)
 	}
-	Log("Running: %s", tsk.Name)
+	Log(color.Green(color.Bold("-- %s --")), tsk.Name)
+	origLog := Log
+	defer func() { Log = origLog }()
+	Log = func(format string, args ...any) {
+		origLog(fmt.Sprintf(color.Green("[%s] "), tsk.Name)+format, args...)
+	}
 	tsk.Run()
 }

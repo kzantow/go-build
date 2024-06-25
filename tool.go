@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"strings"
 	"text/template"
 )
 
@@ -26,11 +25,11 @@ func (c *Context) Append(key string, value any) {
 var Globals = Context{}
 
 func init() {
-	Globals.Append("RootDir", func() string {
+	Globals.Append("RootDir", func() Path {
 		return RootDir
 	})
-	Globals.Append("ToolDir", func() string {
-		return Tpl(ToolDir)
+	Globals.Append("ToolDir", func() Path {
+		return Path(Tpl(ToolDir))
 	})
 	Globals.Append("ToolPath", ToolPath)
 }
@@ -38,21 +37,25 @@ func init() {
 func RunTools() {
 	defer Handle()
 	RunBinny()
+	RunGoTask()
+}
+
+func RunGoTask() {
+	defer appendStackOnPanic()
 	if FileExists(ToolPath("task")) {
 		Cd(RootDir)
-		NoErr(Exec(ToolPath("task"), ExecArgs(os.Args[1:]...)))
+		NoErr(Exec(ToolPath("task"), ExecArgs(os.Args[1:]...), ExecStd()))
 	}
 }
 
-func ToolPath(toolName string) string {
+func ToolPath(toolName string) Path {
 	toolPath := toolName
 	switch runtime.GOOS {
 	case "windows":
 		toolPath += ".exe"
 	}
 	p := filepath.Join(Tpl(ToolDir), toolPath)
-	Globals.Append("TOOL_"+strings.ToUpper(toolName), p)
-	return p
+	return Path(p)
 }
 
 func Tpl(template string, args ...map[string]any) string {

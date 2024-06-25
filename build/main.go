@@ -18,11 +18,14 @@ func main() {
 			Name: "format",
 			Desc: "format all source files",
 			Run: func() {
-				Run(`echo {{title}} {{now}}`)
+				//Run(`echo {{title}} {{now}}`)
+				Log(`dff {{title}} {{now}}`)
+				Run(`gh --version`)
 				Run(`gofmt -w -s .`)
 				//Run(ToolPath("gosimports"), "-local", "github.com/anchore", "-w", ".")
 				//Run(`{{ToolDir}}/gosimports -local github.com/anchore -w .`)
-				Run(`{{ToolPath "gosimports"}} -local github.com/anchore -w .`)
+				//Run(`{{ToolPath "gosimports"}} -local github.com/anchore -w .`)
+				Run(`gosimports -local github.com/anchore -w .`)
 				Run(`go mod tidy`)
 			},
 		},
@@ -31,7 +34,7 @@ func main() {
 			Desc: "format and run lint checks",
 			Deps: All("format"),
 			Run: func() {
-				Run("{{ToolDir}}/golangci-lint run --tests=false --fix")
+				Run("{{ToolDir}}/golangci-lint run --tests=true --fix")
 				Log("lint passed!")
 			},
 		},

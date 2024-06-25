@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+
+	"github.com/kzantow/go-build/color"
 )
 
 // OkError is used to proceed normally
@@ -18,7 +20,7 @@ type StackTraceError struct {
 }
 
 func (s *StackTraceError) Error() string {
-	return fmt.Sprintf("%v%s%v", s.Err, NewLine, strings.Join(s.Stack, NewLine))
+	return fmt.Sprintf(color.Red("ERROR: %v")+"%s%s%v", s.Err, NewLine, NewLine, strings.Join(s.Stack, NewLine))
 }
 
 var _ error = (*StackTraceError)(nil)
@@ -63,8 +65,8 @@ func Catch(fn func()) (err error) {
 	return nil
 }
 
-// CaptureStack is a helper to capture nicer stack information
-func CaptureStack() {
+// appendStackOnPanic helps to capture nicer stack trace information
+func appendStackOnPanic() {
 	v := recover()
 	if v == nil {
 		return

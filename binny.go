@@ -24,10 +24,10 @@ func RunBinny() {
 		installBinny(binnyPath)
 	}
 	Cd(RootDir) // could be: FindFile(".binny.yaml")
-	Run(binnyPath, "install", "-v")
+	Run(string(binnyPath), "install", "-v")
 }
 
-func installBinny(binnyPath string) {
+func installBinny(binnyPath Path) {
 	version := findBinnyVersion()
 
 	err := downloadPrebuiltBinary(binnyPath, downloadSpec{
@@ -89,22 +89,22 @@ func findBinnyVersion() string {
 	return "0.8.0"
 }
 
-func downloadPrebuiltBinary(toolPath string, spec downloadSpec) error {
+func downloadPrebuiltBinary(toolPath Path, spec downloadSpec) error {
 	tplArgs := spec.currentArgs()
 	url := Tpl(spec.url, tplArgs)
 	contents, code, status := Fetch(url)
 	if code > 300 || len(contents) == 0 {
 		return fmt.Errorf("error downloading %v: http %v %v", url, code, status)
 	}
-	contents = getArchiveFileContents(contents, filepath.Base(toolPath))
+	contents = getArchiveFileContents(contents, filepath.Base(string(toolPath)))
 	if contents == nil {
 		return fmt.Errorf("unable to read archive from downloading %v: http %v %v", url, code, status)
 	}
-	dir := filepath.Dir(toolPath)
-	if !FileExists(dir) {
+	dir := filepath.Dir(string(toolPath))
+	if !FileExists(Path(dir)) {
 		NoErr(os.MkdirAll(dir, 0700|os.ModeDir))
 	}
-	return os.WriteFile(toolPath, contents, 0500) // read + execute permissions
+	return os.WriteFile(string(toolPath), contents, 0500) // read + execute permissions
 }
 
 func getArchiveFileContents(archive []byte, file string) []byte {
@@ -181,10 +181,10 @@ func Ldflags(flags ...string) ExecOpt {
 	}
 }
 
-func BuildFromGoSource(file, module, entrypoint, version string, opts ...ExecOpt) {
+func BuildFromGoSource(file Path, module, entrypoint, version string, opts ...ExecOpt) {
 	Log("Building: %s", module)
 	InGitClone("https://"+module, version, func() {
-		NoErr(Exec("go", ExecArgs("build"), ExecOpts(opts...), ExecArgs("-o", file, "./"+entrypoint), ExecStd()))
+		NoErr(Exec("go", ExecArgs("build"), ExecOpts(opts...), ExecArgs("-o", string(file), "./"+entrypoint), ExecStd()))
 	})
 }
 

@@ -5,27 +5,38 @@ import (
 	"path/filepath"
 )
 
-func IsDir(dir string) bool {
-	s, err := os.Stat(dir)
+// Path is used in functions that expect filepaths
+type Path string
+
+func IsDir(dir Path) bool {
+	s, err := os.Stat(string(dir))
 	if err != nil || s == nil {
 		return false
 	}
 	return s.IsDir()
 }
 
-func IsRegularFile(name string) bool {
-	s, err := os.Lstat(name)
+func IsRegularFile(name Path) bool {
+	s, err := os.Lstat(string(name))
 	if err != nil {
 		return false
 	}
 	return !s.IsDir() && s.Mode()&os.ModeSymlink == 0
 }
 
-func FileExists(file string) bool {
-	_, err := os.Stat(file)
+func FileExists(file Path) bool {
+	_, err := os.Stat(string(file))
 	return err == nil
 }
 
-func PathJoin(path ...string) string {
-	return filepath.Join(path...)
+func PathJoin(paths ...Path) Path {
+	return Path(filepath.Join(pathStrings(paths...)...))
+}
+
+func pathStrings[From string | Path](from ...From) []string {
+	var out []string
+	for _, v := range from {
+		out = append(out, string(v))
+	}
+	return out
 }
