@@ -1,29 +1,11 @@
 package build
 
 import (
-	"os"
 	"strings"
 )
 
-// Shelly splits a string at spaces, taking into account shell quotes and {{template directives}}
-func Shelly(s string, env ...map[string]any) []string {
-	context := map[string]any{}
-	for _, line := range os.Environ() {
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) < 2 {
-			continue
-		}
-		context[parts[0]] = parts[1]
-	}
-	for k, v := range Globals {
-		context[k] = v
-	}
-	for _, arg := range env {
-		for k, v := range arg {
-			context[k] = v
-		}
-	}
-
+// ShellSplit splits a string at spaces, taking into account shell quotes and {{template directives}}
+func ShellSplit(s string) []string {
 	var out []string
 	start := 0
 	var quote rune = 0

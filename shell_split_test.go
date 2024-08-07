@@ -6,7 +6,7 @@ import (
 	. "github.com/kzantow/go-build"
 )
 
-func Test_Shelly(t *testing.T) {
+func Test_ShellSplit(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected []string
@@ -50,7 +50,7 @@ func Test_Shelly(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.input, func(t *testing.T) {
-			got := Shelly(test.input)
+			got := ShellSplit(test.input)
 			requireEqualElements(t, test.expected, got)
 		})
 	}

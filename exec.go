@@ -11,7 +11,7 @@ import (
 
 // Run a command, logging with current stdout / stderr
 func Run(cmd ...string) {
-	cmd = append(Shelly(cmd[0]), cmd[1:]...)
+	cmd = append(ShellSplit(cmd[0]), cmd[1:]...)
 	for i := range cmd {
 		cmd[i] = Tpl(cmd[i])
 	}
