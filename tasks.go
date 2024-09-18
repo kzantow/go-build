@@ -15,7 +15,7 @@ type Task struct {
 	Run  func()
 }
 
-func RunTasks(tasks ...Task) {
+func TaskMain(tasks ...Task) {
 	defer HandleErrors()
 	defer appendStackOnPanic()
 

@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	RunTasks(
+	TaskMain(
 		tasks.Format,
 		tasks.LintFix,
 		tasks.StaticAnalysis,
