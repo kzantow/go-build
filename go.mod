@@ -1,6 +1,6 @@
 module github.com/kzantow/go-build
 
-go 1.19
+go 1.21
 
 require (
 	golang.org/x/mod v0.12.0
