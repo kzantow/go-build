@@ -54,7 +54,6 @@ func RunGoTask() {
 		return
 	}
 	if FileExists(ToolPath("task")) {
-		Cd(RootDir())
 		NoErr(Exec(ToolPath("task"), ExecArgs(os.Args[1:]...), ExecStd()))
 	}
 }
@@ -97,7 +96,7 @@ func render(tpl string, context map[string]any) string {
 			funcs[k] = func() any { return v }
 		}
 	}
-	t := Get(template.New("test").Funcs(funcs).Parse(tpl))
+	t := Get(template.New(tpl).Funcs(funcs).Parse(tpl))
 	var buf bytes.Buffer
 	NoErr(t.Execute(&buf, context))
 	return buf.String()
