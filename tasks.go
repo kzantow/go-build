@@ -15,20 +15,27 @@ type Task struct {
 	Run  func()
 }
 
-func Tasks(tasks ...Task) {
+func RunTasks(tasks ...Task) {
+	defer HandleErrors()
 	defer appendStackOnPanic()
+
+	Cd(RootDir())
+
 	t := taskRunner{}
 	for i := range tasks {
 		t.tasks = append(t.tasks, &tasks[i])
 	}
+
 	t.tasks = append(t.tasks, &Task{
 		Name: "help",
 		Run:  t.Help,
 	})
+
 	t.tasks = append(t.tasks, &Task{
 		Name: "makefile",
 		Run:  t.Makefile,
 	})
+
 	t.Run(os.Args[1:]...)
 }
 
@@ -38,7 +45,7 @@ type taskRunner struct {
 }
 
 func (t *taskRunner) Help() {
-	fmt.Printf("Tasks:" + NewLine)
+	fmt.Print("Tasks:", NewLine)
 	sz := 0
 	for _, t := range t.tasks {
 		if len(t.Name) > sz {
@@ -59,14 +66,13 @@ func (t *taskRunner) Makefile() {
 		fmt.Printf("%s:\n", t.Name)
 		fmt.Printf("\t@go run -C %s . %s\n", buildCmdDir, t.Name)
 	}
-	// catch-all, could be the entire script except
+	// catch-all, could be the entire script except for FreeBSD
 	fmt.Printf(".PHONY: *\n")
 	fmt.Printf(".DEFAULT:\n")
 	fmt.Printf("\t@go run -C %s . $@\n", buildCmdDir)
 }
 
 func (t *taskRunner) Run(args ...string) {
-	Cd(RootDir)
 	allTasks := t.tasks
 	if len(allTasks) == 0 {
 		panic("no tasks defined")
@@ -108,11 +114,18 @@ func (t *taskRunner) runTask(name string) {
 		}
 		t.runTask(dep)
 	}
-	Log(color.Green(color.Bold("-- %s --")), tsk.Name)
+
+	if tsk.Run != nil {
+		Log(color.Green(color.Bold("-- %s --")), tsk.Name)
+	}
+
 	origLog := Log
 	defer func() { Log = origLog }()
 	Log = func(format string, args ...any) {
 		origLog(fmt.Sprintf(color.Green("[%s] "), tsk.Name)+format, args...)
 	}
-	tsk.Run()
+
+	if tsk.Run != nil {
+		tsk.Run()
+	}
 }

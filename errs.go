@@ -25,8 +25,8 @@ func (s *StackTraceError) Error() string {
 
 var _ error = (*StackTraceError)(nil)
 
-// Handle is a utility to add to the build main function to make errors and error codes handled prettier
-func Handle() {
+// HandleErrors is a utility to make errors and error codes handled prettier
+func HandleErrors() {
 	v := recover()
 	if v == nil {
 		return

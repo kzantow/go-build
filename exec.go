@@ -1,6 +1,7 @@
 package build
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -15,7 +16,23 @@ func Run(cmd ...string) {
 	for i := range cmd {
 		cmd[i] = Tpl(cmd[i])
 	}
+
 	NoErr(Exec(Path(cmd[0]), ExecArgs(cmd[1:]...), ExecStd()))
+}
+
+// RunE runs a command, returning stdout, stderr, err
+func RunE(cmd ...string) (string, string, error) {
+	cmd = append(ShellSplit(cmd[0]), cmd[1:]...)
+	for i := range cmd {
+		cmd[i] = Tpl(cmd[i])
+	}
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	err := Exec(Path(cmd[0]), ExecArgs(cmd[1:]...), func(cmd *exec.Cmd) {
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+	})
+	return stdout.String(), stderr.String(), err
 }
 
 // Exec executes the given command, returning stdout and any error information
@@ -26,6 +43,9 @@ func Exec(cmd Path, opts ...ExecOpt) error {
 	lookupPath := os.Getenv("PATH")
 	defer func() { LogErr(os.Setenv("PATH", lookupPath)) }()
 	NoErr(os.Setenv("PATH", Tpl(ToolDir)+string(os.PathListSeparator)+lookupPath))
+
+	// find exact command, call binny to make sure it's up-to-date
+	cmd = binnyManagedToolPath(cmd)
 
 	// create the command, this will look it up based on path:
 	c := exec.CommandContext(ctx, string(cmd))
@@ -81,11 +101,15 @@ func ExecStd() ExecOpt {
 	}
 }
 
-// ExecOut sends stdout to the writer
-func ExecOut(out io.Writer) ExecOpt {
+// ExecOut sends stdout to the writer, and optionally stderr
+func ExecOut(stdout io.Writer, stderr ...io.Writer) ExecOpt {
+	err := io.Writer(os.Stderr)
+	if len(stderr) > 1 {
+		err = stderr[1]
+	}
 	return func(cmd *exec.Cmd) {
-		cmd.Stdout = out
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = stdout
+		cmd.Stderr = err
 		cmd.Stdin = os.Stdin
 	}
 }

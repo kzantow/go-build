@@ -18,16 +18,48 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func RunBinny() {
+var (
+	binnyManaged = readBinnyYamlVersions()
+	installed    = map[Path]Path{}
+)
+
+func binnyManagedToolPath(cmd Path) Path {
+	if strings.HasPrefix(string(cmd), Tpl(ToolDir)) {
+		return cmd
+	}
+
+	if out := installed[cmd]; out != "" {
+		return out
+	}
+
+	if binnyManaged[string(cmd)] == "" {
+		return cmd
+	}
+
 	binnyPath := ToolPath("binny")
 	if !FileExists(binnyPath) {
 		installBinny(binnyPath)
 	}
-	Cd(RootDir) // could be: FindFile(".binny.yaml")
-	Run(string(binnyPath), "install", "-v")
+
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	cmdName := string(cmd)
+	err := Exec(binnyPath, ExecArgs("install", "-v", cmdName), ExecEnv("BINNY_ROOT", Tpl(ToolDir)), ExecOut(&stdout, &stderr))
+	if err != nil {
+		Throw(fmt.Errorf("error executing: %s %s\nError: %w\nStdout: %v\nStderr: %v", binnyPath, cmdName, err, stdout.String(), stderr.String()))
+	}
+	cmdName, err = filepath.Abs(filepath.Join(Tpl(ToolDir), cmdName))
+	if err != nil {
+		Throw(err)
+	}
+
+	installed[cmd] = Path(cmdName)
+	return Path(cmdName)
 }
 
 func installBinny(binnyPath Path) {
+	installed["binny"] = binnyPath
+
 	version := findBinnyVersion()
 
 	err := downloadPrebuiltBinary(binnyPath, downloadSpec{
@@ -58,8 +90,10 @@ func installBinny(binnyPath Path) {
 	}
 }
 
-func findBinnyVersion() string {
-	binnyConfig := FindFile(".binny.yaml")
+//nolint:gocognit
+func readBinnyYamlVersions() map[string]string {
+	out := map[string]string{}
+	binnyConfig := findFile(string(RepoRoot()), ".binny.yaml")
 	if binnyConfig != "" {
 		cfg := map[string]any{}
 		f, err := os.Open(binnyConfig)
@@ -70,23 +104,34 @@ func findBinnyVersion() string {
 				tools := cfg["tools"]
 				if tools, ok := tools.([]any); ok {
 					for _, tool := range tools {
-						if m, ok := tool.(map[string]any); ok && m["name"] == "binny" {
-							v := m["version"]
-							if v, ok := v.(string); ok {
-								return v
-							}
-							if v, ok := v.(map[string]any); ok {
-								if v, ok := v["want"].(string); ok {
-									return regexp.MustCompile("^v").ReplaceAllString(v, "")
+						if m, ok := tool.(map[string]any); ok {
+							version := m["version"]
+							if v, ok := version.(map[string]any); ok {
+								if want, ok := v["want"].(string); ok {
+									version = want
 								}
 							}
+							out[toString(m["name"])] = regexp.MustCompile("^v").ReplaceAllString(toString(version), "")
 						}
 					}
 				}
 			}
 		}
 	}
+	return out
+}
+
+func findBinnyVersion() string {
+	ver := readBinnyYamlVersions()["binny"]
+	if ver != "" {
+		return ver
+	}
 	return "0.8.0"
+}
+
+func toString(v any) string {
+	s, _ := v.(string)
+	return s
 }
 
 func downloadPrebuiltBinary(toolPath Path, spec downloadSpec) error {
@@ -104,7 +149,7 @@ func downloadPrebuiltBinary(toolPath Path, spec downloadSpec) error {
 	if !FileExists(Path(dir)) {
 		NoErr(os.MkdirAll(dir, 0700|os.ModeDir))
 	}
-	return os.WriteFile(string(toolPath), contents, 0500) // read + execute permissions
+	return os.WriteFile(string(toolPath), contents, 0500) //nolint:gosec // read + execute permissions
 }
 
 func getArchiveFileContents(archive []byte, file string) []byte {

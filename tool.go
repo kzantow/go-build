@@ -9,7 +9,12 @@ import (
 	"text/template"
 )
 
-var ToolDir = "{{RootDir}}/.tool"
+var (
+	ToolDir  = "{{RootDir}}/.tool/{{Platform}}"
+	Platform = "{{OS}}/{{Arch}}"
+	OS       = runtime.GOOS
+	Arch     = runtime.GOARCH
+)
 
 type ToolContext struct {
 	RootDir string
@@ -25,33 +30,38 @@ func (c *Context) Append(key string, value any) {
 var Globals = Context{}
 
 func init() {
-	Globals.Append("RootDir", func() Path {
-		return RootDir
-	})
-	Globals.Append("ToolDir", func() Path {
-		return Path(Tpl(ToolDir))
-	})
-	Globals.Append("ToolPath", ToolPath)
+	Globals.Append("RootDir", RootDir)
+	Globals.Append("RepoRoot", RepoRoot)
+	Globals.Append("ToolDir", tplFunc(ToolDir))
+	Globals.Append("OS", tplFunc(OS))
+	Globals.Append("Arch", tplFunc(Arch))
+	Globals.Append("Platform", tplFunc(Platform))
 }
 
 func RunTools() {
-	defer Handle()
+	defer HandleErrors()
 	RunBinny()
 	RunGoTask()
 }
 
+func RunBinny() {
+	Run("binny", "install", "-v")
+}
+
 func RunGoTask() {
 	defer appendStackOnPanic()
+	if findFile(string(RootDir()), "Taskfile.yaml") == "" {
+		return
+	}
 	if FileExists(ToolPath("task")) {
-		Cd(RootDir)
+		Cd(RootDir())
 		NoErr(Exec(ToolPath("task"), ExecArgs(os.Args[1:]...), ExecStd()))
 	}
 }
 
 func ToolPath(toolName string) Path {
 	toolPath := toolName
-	switch runtime.GOOS {
-	case "windows":
+	if runtime.GOOS == "windows" {
 		toolPath += ".exe"
 	}
 	p := filepath.Join(Tpl(ToolDir), toolPath)
@@ -91,4 +101,10 @@ func render(tpl string, context map[string]any) string {
 	var buf bytes.Buffer
 	NoErr(t.Execute(&buf, context))
 	return buf.String()
+}
+
+func tplFunc(tpl string) func() Path {
+	return func() Path {
+		return Path(Tpl(tpl))
+	}
 }
