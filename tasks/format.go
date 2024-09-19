@@ -18,7 +18,6 @@ var Format = Task{
 	Name: "format",
 	Desc: "format all source files",
 	Run: func() {
-		Log(`Building {{app}} at {{now}}`)
 		Run(`gofmt -w -s .`)
 		Run(`gosimports -local github.com/anchore -w .`)
 		Run(`go mod tidy`)
@@ -31,7 +30,6 @@ var LintFix = Task{
 	Deps: All("format"),
 	Run: func() {
 		Run("golangci-lint run --fix")
-		Log("lint passed!")
 	},
 }
 
